@@ -55,20 +55,11 @@ setup_alias() {
   RC_FILE=""
   ALIAS_COMMAND="alias sail='bash vendor/bin/sail'"
 
-  # シェルに応じて設定ファイルを決定
-  if [ -n "$ZSH_VERSION" ]; then
+  # ユーザーのログインシェルに応じて設定ファイルを決定
+  if [[ "${SHELL:-}" == */zsh ]]; then
     RC_FILE="$HOME/.zshrc"
-  elif [ -n "$BASH_VERSION" ]; then
+  elif [[ "${SHELL:-}" == */bash ]]; then
     RC_FILE="$HOME/.bashrc"
-  fi
-
-  # zsh/bash 以外のシェルの場合、$SHELLから判定を試みる
-  if [ -z "$RC_FILE" ] && [ -n "$SHELL" ]; then
-    if [[ "$SHELL" == */zsh ]]; then
-        RC_FILE="$HOME/.zshrc"
-    elif [[ "$SHELL" == */bash ]]; then
-        RC_FILE="$HOME/.bashrc"
-    fi
   fi
 
   # 設定ファイルが決定され、存在する場合に処理を行う
