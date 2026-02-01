@@ -41,12 +41,13 @@ composer_install() {
 }
 
 generate_key() {
-  if [ ! -x ./vendor/bin/sail ]; then
-    echo "[✖] vendor/bin/sail not found – did composer install succeed?" >&2
-    exit 1
-  fi
-  echo "[⋯] Generating APP_KEY via Sail"
-  ./vendor/bin/sail artisan key:generate --force
+  echo "[⋯] Generating APP_KEY via Docker"
+  docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):${CONTAINER_DIR}" \
+    -w "${CONTAINER_DIR}" \
+    "${IMAGE}" \
+    php artisan key:generate --force
   echo "[✔] APP_KEY generated"
 }
 
