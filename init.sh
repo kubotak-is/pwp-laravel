@@ -8,14 +8,13 @@
 # 処理内容:
 #   1) .env.example → .env （存在しなければコピー）
 #   2) Docker 経由で composer install --ignore-platform-reqs
-#   3) php artisan key:generate  (Sail を使って APP_KEY 生成)
-#   4) シェル設定ファイルに 'sail' エイリアスを自動追加
+#   3) APP_KEY 生成 (openssl を使用)
 #
 # -------------------------------------------------------------
 set -euo pipefail
 
-PHP_VERSION="8.4"
-IMAGE="laravelsail/php${PHP_VERSION/./}-composer:latest"   # 例: laravelsail/php84-composer:latest
+COMPOSER_VERSION="2.9.3"
+IMAGE="composer/composer:${COMPOSER_VERSION}"
 CONTAINER_DIR="/var/www/html"                               # Sail の WORKDIR と合わせる
 
 copy_env() {
@@ -41,45 +40,26 @@ composer_install() {
 }
 
 generate_key() {
-  echo "[⋯] Generating APP_KEY via Docker"
-  docker run --rm \
-    -u "$(id -u):$(id -g)" \
-    -v "$(pwd):${CONTAINER_DIR}" \
-    -w "${CONTAINER_DIR}" \
-    "${IMAGE}" \
-    php artisan key:generate --force
+  # .env に APP_KEY が設定済みかチェック
+  if grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
+    echo "[✔] APP_KEY already set – skipping"
+    return
+  fi
+  echo "[⋯] Generating APP_KEY"
+  APP_KEY="base64:$(openssl rand -base64 32)"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s/^APP_KEY=.*/APP_KEY=${APP_KEY}/" .env
+  else
+    sed -i "s/^APP_KEY=.*/APP_KEY=${APP_KEY}/" .env
+  fi
   echo "[✔] APP_KEY generated"
-}
-
-setup_alias() {
-  RC_FILE=""
-  ALIAS_COMMAND="alias sail='bash vendor/bin/sail'"
-
-  # ユーザーのログインシェルに応じて設定ファイルを決定
-  if [[ "${SHELL:-}" == */zsh ]]; then
-    RC_FILE="$HOME/.zshrc"
-  elif [[ "${SHELL:-}" == */bash ]]; then
-    RC_FILE="$HOME/.bashrc"
-  fi
-
-  # 設定ファイルが決定され、存在する場合に処理を行う
-  if [ -n "$RC_FILE" ] && [ -f "$RC_FILE" ]; then
-    # エイリアスがまだ設定されていない場合のみ追記
-    if ! grep -qF "$ALIAS_COMMAND" "$RC_FILE"; then
-      echo "" >> "$RC_FILE" # 見た目を整えるための改行
-      echo "$ALIAS_COMMAND" >> "$RC_FILE"
-      echo "[+] Added 'sail' alias to $RC_FILE."
-      echo "    To apply it now, please run: source $RC_FILE"
-    fi
-  fi
 }
 
 main() {
   copy_env
   composer_install
   generate_key
-  setup_alias
-  echo "🎉 Setup finished! Now you can run 'sail up -d' to start developing."
+  echo "🎉 Setup finished! Now you can run './vendor/bin/sail up -d' to start developing."
 }
 
 main "$@"
