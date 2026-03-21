@@ -13,9 +13,9 @@
 # -------------------------------------------------------------
 set -euo pipefail
 
-COMPOSER_VERSION="2.9.3"
+COMPOSER_VERSION="2.9.5"
 IMAGE="composer/composer:${COMPOSER_VERSION}"
-CONTAINER_DIR="/var/www/html"                               # Sail の WORKDIR と合わせる
+CONTAINER_DIR="/var/www/html" # Sail の WORKDIR と合わせる
 
 copy_env() {
   if [ -f .env ]; then
