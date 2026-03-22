@@ -8,7 +8,8 @@
 # 処理内容:
 #   1) .env.example → .env （存在しなければコピー）
 #   2) Docker 経由で composer install --ignore-platform-reqs
-#   3) APP_KEY 生成 (openssl を使用)
+#   3) Sail コンテナ起動
+#   4) composer run setup（key生成・マイグレーション・npm install/build）
 #
 # -------------------------------------------------------------
 set -euo pipefail
@@ -39,27 +40,31 @@ composer_install() {
   echo "[✔] composer install completed"
 }
 
-generate_key() {
-  # .env に APP_KEY が設定済みかチェック
-  if grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
-    echo "[✔] APP_KEY already set – skipping"
-    return
-  fi
-  echo "[⋯] Generating APP_KEY"
-  APP_KEY="base64:$(openssl rand -base64 32)"
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "s/^APP_KEY=.*/APP_KEY=${APP_KEY}/" .env
-  else
-    sed -i "s/^APP_KEY=.*/APP_KEY=${APP_KEY}/" .env
-  fi
-  echo "[✔] APP_KEY generated"
+sail_up() {
+  echo "[⋯] Starting Sail containers"
+  ./vendor/bin/sail up -d
+  echo "[✔] Sail containers started"
+}
+
+run_setup() {
+  echo "[⋯] Running composer run setup via Sail"
+  ./vendor/bin/sail composer run setup
+  echo "[✔] Application setup completed"
+}
+
+sail_down() {
+  echo "[⋯] Stopping Sail containers"
+  ./vendor/bin/sail down
+  echo "[✔] Sail containers stopped"
 }
 
 main() {
   copy_env
   composer_install
-  generate_key
-  echo "🎉 Setup finished! Now you can run './vendor/bin/sail up -d' to start developing."
+  sail_up
+  run_setup
+  sail_down
+  echo "🎉 Setup finished! Run './vendor/bin/sail up' to start developing."
 }
 
 main "$@"
