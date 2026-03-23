@@ -42,7 +42,7 @@ composer_install() {
 
 sail_up() {
   echo "[⋯] Starting Sail containers"
-  ./vendor/bin/sail up -d
+  ./vendor/bin/sail up -d --wait
   echo "[✔] Sail containers started"
 }
 
