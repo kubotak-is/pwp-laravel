@@ -10,6 +10,7 @@
 #   2) Docker 経由で composer install --ignore-platform-reqs
 #   3) Sail コンテナ起動
 #   4) composer run setup（key生成・マイグレーション・npm install/build）
+#   5) シェル設定ファイルに 'sail' エイリアスを自動追加
 #
 # -------------------------------------------------------------
 set -euo pipefail
@@ -52,6 +53,31 @@ run_setup() {
   echo "[✔] Application setup completed"
 }
 
+setup_alias() {
+  RC_FILE=""
+  ALIAS_COMMAND="alias sail='bash vendor/bin/sail'"
+
+  # ユーザーのログインシェルに応じて設定ファイルを決定
+  if [[ "${SHELL:-}" == */zsh ]]; then
+    RC_FILE="$HOME/.zshrc"
+  elif [[ "${SHELL:-}" == */bash ]]; then
+    RC_FILE="$HOME/.bashrc"
+  fi
+
+  # 設定ファイルが決定され、存在する場合に処理を行う
+  if [ -n "$RC_FILE" ] && [ -f "$RC_FILE" ]; then
+    # エイリアスがまだ設定されていない場合のみ追記
+    if ! grep -qF "$ALIAS_COMMAND" "$RC_FILE"; then
+      echo "" >> "$RC_FILE"
+      echo "$ALIAS_COMMAND" >> "$RC_FILE"
+      echo "[+] Added 'sail' alias to $RC_FILE."
+      echo "    To apply it now, please run: source $RC_FILE"
+    else
+      echo "[✔] 'sail' alias already exists in $RC_FILE – skipping"
+    fi
+  fi
+}
+
 sail_down() {
   echo "[⋯] Stopping Sail containers"
   ./vendor/bin/sail down
@@ -64,7 +90,8 @@ main() {
   sail_up
   run_setup
   sail_down
-  echo "🎉 Setup finished! Run './vendor/bin/sail up' to start developing."
+  setup_alias
+  echo "🎉 Setup finished! Run 'sail up -d' to start developing."
 }
 
 main "$@"
